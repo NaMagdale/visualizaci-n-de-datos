@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualización de la Producción de Cobre</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    .line {
+      fill: none;
+      stroke-width: 2px;
+    }
+    .axis-label {
+      font-size: 12px;
+    }
+    .legend {
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+<svg width="960" height="500"></svg>
+<script>
+  // Dimensiones y márgenes del gráfico
+  const margin = {top: 40, right: 150, bottom: 60, left: 50},
+          width = 960 - margin.left - margin.right,
+          height = 500 - margin.top - margin.bottom;
+
+  // Añadir el objeto SVG al cuerpo de la página
+  const svg = d3.select("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  // Cargar los datos
+  d3.csv("minerals(1).csv").then(function(data) {
+
+    // Limpiar y procesar los datos
+    data.forEach(d => {
+      d.Year = +d.Year;
+      d.share = +d["share of global production|Copper|Mine|tonnes"];
+    });
+
+    // Lista de grupos (países) y filtrar los datos para algunos países
+    const countries = ["Chile", "Peru", "China", "Australia", "United States"];
+    const filteredData = data.filter(d => countries.includes(d.Entity));
+
+    // Crear escala para el eje X (años)
+    const x = d3.scaleLinear()
+            .domain(d3.extent(filteredData, d => d.Year))
+            .range([0, width]);
+    svg.append("g")
+            .attr("transform", "translate(0," + height + ")")
+            .call(d3.axisBottom(x).tickFormat(d3.format("d")));
+
+    // Crear escala para el eje Y (participación en la producción)
+    const y = d3.scaleLinear()
+            .domain([0, d3.max(filteredData, d => d.share)])
+            .range([height, 0]);
+    svg.append("g")
+            .call(d3.axisLeft(y));
+
+    // Crear una escala de colores
+    const color = d3.scaleOrdinal()
+            .domain(countries)
+            .range(d3.schemeCategory10);
+
+    // Generador de líneas
+    const line = d3.line()
+            .x(d => x(d.Year))
+            .y(d => y(d.share));
+
+    // Dibujar las líneas para cada país con transición
+    const countryGroup = svg.selectAll(".country")
+            .data(countries)
+            .enter()
+            .append("g")
+            .attr("class", "country");
+
+    countryGroup.append("path")
+            .attr("class", "line")
+            .attr("fill", "none")
+            .attr("stroke", d => color(d))
+            .attr("stroke-width", 2)
+            .attr("d", function(d) {
+              return line(filteredData.filter(row => row.Entity === d));
+            })
+            .attr("stroke-dasharray", function() {
+              const length = this.getTotalLength();
+              return length + " " + length;
+            })
+            .attr("stroke-dashoffset", function() {
+              return this.getTotalLength();
+            })
+            .transition()
+            .duration(2000)
+            .attr("stroke-dashoffset", 0);
+
+    // Agregar etiquetas dinámicas al final de cada línea
+    countryGroup.append("text")
+            .datum(function(d) {
+              return filteredData.filter(row => row.Entity === d).slice(-1)[0];
+            })
+            .attr("transform", d => `translate(${x(d.Year)},${y(d.share)})`)
+            .attr("x", 5)
+            .attr("dy", ".35em")
+            .style("fill", d => color(d.Entity))
+            .style("font-size", "12px")
+            .text(d => d.Entity + ": " + d3.format(".2f")(d.share) + "%");
+
+    // Encontrar el año peak de cada país
+    countries.forEach(function(country) {
+      const countryData = filteredData.filter(d => d.Entity === country);
+      const maxDataPoint = d3.max(countryData, d => d.share);
+      const peakData = countryData.find(d => d.share === maxDataPoint);
+
+      // Agregar un círculo grande en el año peak
+      const circle = svg.append("circle")
+              .attr("cx", x(peakData.Year))
+              .attr("cy", y(peakData.share))
+              .attr("r", 0) // Empieza con radio 0
+              .style("fill", color(country))
+              .style("stroke", "black")
+              .style("stroke-width", 1);
+
+      // Transición del círculo (aumenta el radio)
+      circle.transition()
+              .delay(2000) // Espera hasta que las líneas terminen
+              .duration(1000)
+              .attr("r", 8); // Tamaño grande para destacar
+
+      // Agregar una etiqueta con el valor en el punto peak
+      svg.append("text")
+              .attr("x", x(peakData.Year) + 10)
+              .attr("y", y(peakData.share))
+              .style("fill", color(country))
+              .style("font-size", "12px")
+              .style("opacity", 0) // Empieza invisible
+              .transition()
+              .delay(2000) // Aparece después de las líneas
+              .duration(1000)
+              .style("opacity", 1)
+              .text(`${peakData.Year}: ${d3.format(".2f")(peakData.share)}%`);
+    });
+
+    // Añadir leyenda para cada país
+    const legend = svg.selectAll(".legend")
+            .data(countries)
+            .enter().append("g")
+            .attr("class", "legend")
+            .attr("transform", (d, i) => `translate(${width + 10},${i * 20})`);
+
+    legend.append("rect")
+            .attr("x", 0)
+            .attr("width", 18)
+            .attr("height", 18)
+            .style("fill", color);
+
+    legend.append("text")
+            .attr("x", 24)
+            .attr("y", 9)
+            .attr("dy", "0.35em")
+            .text(d => d);
+
+    // Etiqueta del eje X
+    svg.append("text")
+            .attr("class", "axis-label")
+            .attr("x", width / 2)
+            .attr("y", height + margin.bottom - 10)
+            .style("text-anchor", "middle")
+            .text("Año");
+
+    // Etiqueta del eje Y
+    svg.append("text")
+            .attr("class", "axis-label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", -margin.left + 10)
+            .attr("x", -height / 2)
+            .style("text-anchor", "middle")
+            .text("Participación en la Producción Global de Cobre (%)");
+
+  });
+</script>
+</body>
+</html>
