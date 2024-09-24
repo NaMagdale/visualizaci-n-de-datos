@@ -32,6 +32,14 @@
           .append("g")
           .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
+  // Añadir el título dentro del gráfico SVG
+  svg.append("text")
+          .attr("x", width / 2)
+          .attr("y", -margin.top / 2)
+          .attr("text-anchor", "middle")
+          .style("font-size", "24px")
+          .text("Participación en la Producción Global de Cobre");
+
   // Cargar los datos
   d3.csv("minerals(1).csv").then(function(data) {
 
