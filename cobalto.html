@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gráfico de Torta - Producción de Cobalto</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    h2 {
+      font-size: 24px;
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .chart-container {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 30px;
+    }
+
+    .chart {
+      text-align: center;
+      margin-bottom: 50px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      background-color: white;
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .legend {
+      font-size: 14px;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .legend-color {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      margin-right: 10px;
+      border: 1px solid #ccc;
+    }
+
+    .legend-text {
+      font-size: 14px;
+      color: #2c3e50;
+    }
+
+    svg {
+      box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    path {
+      filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.2));
+    }
+
+    /* Estilo para el tooltip */
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      padding: 8px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+  </style>
+</head>
+<body>
+<div class="chart-container">
+  <div class="chart" id="chart2021">
+    <h2>Producción de Cobalto - Año 2021</h2>
+  </div>
+  <div class="chart" id="chart2022">
+    <h2>Producción de Cobalto - Año 2022</h2>
+  </div>
+  <div class="chart" id="chart2023">
+    <h2>Producción de Cobalto - Año 2023</h2>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+  const data2021 = [
+    { entity: "República Democrática del Congo", share: 72.12 },
+    { entity: "Australia", share: 3.21 },
+    { entity: "Rusia", share: 3.03 },
+    { entity: "Marruecos", share: 2.46 },
+    { entity: "Cuba", share: 2.42 },
+    { entity: "Canadá", share: 2.64 },
+    { entity: "Filipinas", share: 1.02 },
+    { entity: "China", share: 1.33 },
+    { entity: "Papúa Nueva Guinea", share: 1.06 },
+    { entity: "Finlandia", share: 0.87 }
+  ];
+
+  const data2022 = [
+    { entity: "República Democrática del Congo", share: 73.10 },
+    { entity: "Australia", share: 2.94 },
+    { entity: "Rusia", share: 3.03 },
+    { entity: "Marruecos", share: 2.46 },
+    { entity: "Cuba", share: 1.88 },
+    { entity: "Canadá", share: 1.55 },
+    { entity: "Filipinas", share: 1.02 },
+    { entity: "China", share: 1.12 },
+    { entity: "Papúa Nueva Guinea", share: 1.06 },
+    { entity: "Finlandia", share: 0.87 }
+  ];
+
+  const data2023 = [
+    { entity: "República Democrática del Congo", share: 73.91 },
+    { entity: "Rusia", share: 3.03 },
+    { entity: "Australia", share: 2.00 },
+    { entity: "Cuba", share: 1.39 },
+    { entity: "Canadá", share: 0.91 }
+  ];
+
+  const width = 400, height = 400, margin = 50;
+  const radius = Math.min(width, height) / 2 - margin;
+
+  const createPieChart = (id, data) => {
+    const svg = d3.select(id)
+            .append("svg")
+            .attr("width", width + 200)
+            .attr("height", height)
+            .append("g")
+            .attr("transform", `translate(${width / 2},${height / 2})`);
+
+    const color = d3.scaleOrdinal()
+            .domain(data.map(d => d.entity))
+            .range(d3.schemeSet2);
+
+    const pie = d3.pie()
+            .sort(null)
+            .value(d => d.share);
+
+    const data_ready = pie(data);
+
+    const arc = d3.arc()
+            .innerRadius(0)
+            .outerRadius(radius);
+
+    const tooltip = d3.select("#tooltip");
+
+    svg.selectAll('slices')
+            .data(data_ready)
+            .join('path')
+            .attr('d', arc)
+            .attr('fill', d => color(d.data.entity))
+            .attr("stroke", "white")
+            .style("stroke-width", "2px")
+            .style("opacity", 0.9)
+            .on("mouseover", (event, d) => {
+              tooltip.transition().duration(200).style("opacity", 0.9);
+              tooltip.html(`${d.data.entity}: ${d.data.share}%`)
+                      .style("left", (event.pageX + 5) + "px")
+                      .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", () => {
+              tooltip.transition().duration(500).style("opacity", 0);
+            })
+            .on("click", (event, d) => {
+              d3.selectAll('path').style('opacity', 0.5); // Reduce opacidad
+              d3.select(event.currentTarget).style('opacity', 1); // Resaltar porción seleccionada
+            });
+
+    const legend = d3.select(id).append("div")
+            .attr("class", "legend");
+
+    legend.selectAll(".legend-item")
+            .data(data)
+            .enter()
+            .append("div")
+            .attr("class", "legend-item")
+            .html(d => `
+                    <span class="legend-color" style="background-color:${color(d.entity)}"></span>
+                    <span class="legend-text">${d.entity}: ${d.share}%</span>
+                `);
+  }
+
+  // Crear los gráficos de torta para cada año
+  createPieChart("#chart2021", data2021);
+  createPieChart("#chart2022", data2022);
+  createPieChart("#chart2023", data2023);
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
